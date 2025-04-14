@@ -7,16 +7,29 @@ const PASSWORD = process.env.PASSWORD as string;
 
 const readingExercise = async (page: Page) => {
   while (true) {
-    const correctionButton = page.getByRole("button", { name: "Correction" });
+    // Récupère tous les boutons "Correction" visibles
+    const correctionButtons = await page
+      .getByRole("button", { name: "Correction" })
+      .all();
 
-    if (await correctionButton.isVisible()) {
-      console.log("🧠 Clique sur le bouton Correction !");
-      await correctionButton.click();
-    } else {
-      console.log("❌ Bouton Correction non trouvé !");
+    let correctionFound = false;
+
+    for (const [index, correctionButton] of correctionButtons.entries()) {
+      if (await correctionButton.isVisible()) {
+        console.log(`🧠 Correction ${index + 1} trouvée, on clique !`);
+        await correctionButton.click();
+        correctionFound = true;
+        await page.waitForTimeout(500); // petite pause pour laisser apparaître les labels
+      } else {
+        console.log(`❌ Correction ${index + 1} pas visible`);
+      }
     }
 
-    // Attente de la bonne réponse visible
+    if (!correctionFound) {
+      console.log("❌ Aucun bouton Correction visible !");
+    }
+
+    // Attente d'une bonne réponse visible
     const successLabel = page.locator("label.bg-success-05").last();
     console.log("Attente de la bonne réponse visible...");
     try {
@@ -32,8 +45,6 @@ const readingExercise = async (page: Page) => {
         );
       }
 
-      console.log("REPONSELABELLE", answerLabels);
-
       // Clique sur la bonne réponse visible
       const successLabels = await page.locator("label.bg-success-05").all();
       if (successLabels.length > 0) {
@@ -45,7 +56,7 @@ const readingExercise = async (page: Page) => {
         console.log("❌ Aucune bonne réponse visible !");
       }
     } catch {
-      console.log("❌ Aucune bonne réponse visible !");
+      console.log("❌ Aucune bonne réponse visible (timeout) !");
     }
 
     // Clique sur Suivant ou Valider
@@ -62,13 +73,14 @@ const readingExercise = async (page: Page) => {
       console.log("❌ Aucun bouton 'Suivant' ou 'Valider' trouvé !");
     }
 
+    // Fin de l'exercice
     const terminerButton = page.getByRole("button", { name: "Terminer" });
     if (await terminerButton.isVisible()) {
       console.log(
         "✅ Bouton 'Terminer' trouvé, on clique dessus et on sort de la boucle."
       );
       await terminerButton.click();
-      break; // Sort de la boucle while
+      break;
     }
 
     await page.waitForTimeout(1500);
@@ -165,6 +177,13 @@ const listeningExercise = async (page: Page) => {
   await page.waitForTimeout(2000);
 
   while (true) {
+    const test = page.locator("button", { hasText: "Démarrer" }).first();
+    if (await test.isVisible()) {
+      console.log("🚀 Clique sur le bouton Démarrer !");
+      await test.click();
+    } else {
+      console.log("❌ Bouton Démarrer non trouvé !");
+    }
     // Clique sur le bon module
     const gridContainer = page.locator(
       "div.grid.grid-cols-12.gap-x-4.gap-y-6.pt-5.pl-4.pb-8.ml-3.border-l-2"
@@ -228,16 +247,27 @@ const listeningExercise = async (page: Page) => {
       console.log("❓ Type d'exercice non reconnu !");
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(3000);
 
-    // Clique sur "Activité suivante"
-    const nextButton = page.locator('button:has-text("Activité suivante")');
-    if (await nextButton.isVisible()) {
+    const nextButton = page
+      .locator("button", { hasText: "Activité suivante" })
+      .first();
+
+    if (await nextButton.isVisible().catch(() => false)) {
       console.log("➡️ Clique sur 'Activité suivante' !");
       await nextButton.click();
+      await page.waitForTimeout(3000);
     } else {
-      console.log("❌ Bouton 'Activité suivante' non trouvé !");
-      break;
+      console.log(
+        "🔁 Bouton 'Activité suivante' non trouvé, retour manuel au planning !"
+      );
+      await page.goto(
+        "https://exam.global-exam.com/user-plannings/2251799877021366",
+        {
+          waitUntil: "domcontentloaded",
+        }
+      );
+      await page.waitForTimeout(2000);
     }
 
     await page.waitForTimeout(3000);
