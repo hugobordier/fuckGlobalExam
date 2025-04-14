@@ -6,6 +6,12 @@ To install dependencies:
 bun install
 ```
 
+make a .env file in root of projet and set your credifentials inside like this : 
+```bash
+MAIL=""
+PASSWORD=""
+```
+
 To run:
 
 ```bash
