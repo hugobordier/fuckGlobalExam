@@ -4,7 +4,6 @@ dotenv.config();
 
 const MAIL = process.env.MAIL as string;
 const PASSWORD = process.env.PASSWORD as string;
-const EXAM_URL = process.env.EXAM_URL;
 
 const readingExercise = async (page: Page) => {
   while (true) {
@@ -76,6 +75,73 @@ const readingExercise = async (page: Page) => {
   }
 };
 
+const listeningExercise = async (page: Page) => {
+  while (true) {
+    const divWithClass = page.locator(
+      "div.w-full.relative.lg\\:block.lg\\:w-7\\/10"
+    );
+
+    if (await divWithClass.isVisible()) {
+      console.log("✅ La div est visible !");
+
+      const cardDivs = divWithClass.locator("div.card");
+      const count = await cardDivs.count();
+      console.log(
+        `Il y a ${count} div(s) avec la classe 'card' à l'intérieur.`
+      );
+
+      for (let i = 0; i < count; i++) {
+        const cardDiv = cardDivs.nth(i);
+        const textContent = await cardDiv.textContent();
+        console.log(`🃏 Texte de la div card ${i}: ${textContent}`);
+
+        // Étape 1 : Clique sur "Voir la correction"
+        const correctionButton = cardDiv.locator("text=Voir la correction");
+        if (await correctionButton.isVisible()) {
+          console.log(
+            `➡️ Bouton correction trouvé pour la carte ${i}, on clique`
+          );
+          await correctionButton.click();
+          await page.waitForTimeout(500); // petite pause si l'affichage est animé
+        } else {
+          console.log(`❌ Bouton correction non trouvé dans la carte ${i}`);
+        }
+
+        // Étape 2 : Clique sur le label avec la bonne réponse (bg-success-05)
+        const correctLabel = cardDiv.locator("label.bg-success-05");
+        if (await correctLabel.isVisible()) {
+          console.log(`✅ Label correct trouvé dans la carte ${i}, on clique`);
+          await correctLabel.click();
+        } else {
+          console.log(
+            `❌ Label avec bg-success-05 pas trouvé dans la carte ${i}`
+          );
+        }
+      }
+
+      // Étape finale : Clique sur le bouton "Valider"
+      const validerButton = page.locator('button:has-text("Valider")');
+      if (await validerButton.isVisible()) {
+        console.log("🚀 Bouton 'Valider' trouvé, on valide tout !");
+        await validerButton.click();
+      } else {
+        console.log("❌ Bouton 'Valider' pas trouvé sur la page.");
+      }
+
+      const terminerButton = page.getByRole("button", { name: "Terminer" });
+      if (await terminerButton.isVisible()) {
+        console.log(
+          "✅ Bouton 'Terminer' trouvé, on clique dessus et on sort de la boucle."
+        );
+        await terminerButton.click();
+        break; // Sort de la boucle while
+      }
+    } else {
+      console.log("❌ La div principale n'est pas visible.");
+    }
+  }
+};
+
 (async () => {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
@@ -98,70 +164,85 @@ const readingExercise = async (page: Page) => {
   );
   await page.waitForTimeout(2000);
 
-  // Clique sur le bon module
-  const gridContainer = page.locator(
-    "div.grid.grid-cols-12.gap-x-4.gap-y-6.pt-5.pl-4.pb-8.ml-3.border-l-2"
-  );
-  const buttons: Locator[] = await gridContainer.locator("button").all();
+  while (true) {
+    // Clique sur le bon module
+    const gridContainer = page.locator(
+      "div.grid.grid-cols-12.gap-x-4.gap-y-6.pt-5.pl-4.pb-8.ml-3.border-l-2"
+    );
+    const buttons: Locator[] = await gridContainer.locator("button").all();
 
-  if (!buttons || buttons.length === 0) {
-    console.log("Aucun bouton trouvé !");
-    return;
-  }
-
-  let found = false;
-  for (let i = 0; i < buttons.length - 1; i++) {
-    const text = await buttons[i]?.innerText();
-    console.log("---------------------------------------------------");
-    console.log("Button text:", text);
-
-    if (text && !text.includes("%") && !text.includes("Introduction")) {
-      console.log("➡️  On clique sur :", text);
-      await buttons[i]?.click();
-      found = true;
+    if (!buttons || buttons.length === 0) {
+      console.log("❌ Aucun bouton trouvé !");
       break;
     }
+
+    let found = false;
+    for (let i = 0; i < buttons.length - 1; i++) {
+      const text = await buttons[i]?.innerText();
+      console.log("---------------------------------------------------");
+      console.log("Button text:", text);
+
+      if (
+        text &&
+        !text.includes("%") &&
+        !text.includes("Introduction") &&
+        text.includes("Partie")
+      ) {
+        console.log("➡️  On clique sur :", text);
+        await buttons[i]?.click();
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      console.log("✅ Tous les modules sont faits !");
+      break;
+    }
+
+    await page.waitForTimeout(5000);
+
+    // Clique sur Démarrer
+    const startButton = page.locator("button", { hasText: "Démarrer" }).first();
+    if (await startButton.isVisible()) {
+      console.log("🚀 Clique sur le bouton Démarrer !");
+      await startButton.click();
+    } else {
+      console.log("❌ Bouton Démarrer non trouvé !");
+      continue; // passe au module suivant
+    }
+
+    await page.waitForTimeout(3000);
+
+    // Détection du type d'exercice
+    const divWithClass = page.locator("div.hidden.items-center.pr-2.lg\\:flex");
+    const divContent = await divWithClass.textContent();
+
+    if (divContent && divContent.includes("reading")) {
+      console.log("📖 Exercice de reading détecté !");
+      await readingExercise(page);
+    } else if (divContent && divContent.includes("listening")) {
+      console.log("🎧 Exercice de listening détecté !");
+      await listeningExercise(page);
+    } else {
+      console.log("❓ Type d'exercice non reconnu !");
+    }
+
+    await page.waitForTimeout(1000);
+
+    // Clique sur "Activité suivante"
+    const nextButton = page.locator('button:has-text("Activité suivante")');
+    if (await nextButton.isVisible()) {
+      console.log("➡️ Clique sur 'Activité suivante' !");
+      await nextButton.click();
+    } else {
+      console.log("❌ Bouton 'Activité suivante' non trouvé !");
+      break;
+    }
+
+    await page.waitForTimeout(3000);
   }
 
-  if (!found) {
-    console.log(
-      "✅ Tous les boutons ont un score ou aucun bouton cliquable trouvé !"
-    );
-    return;
-  }
-
-  console.log("ok aller 5seceonce");
-  await page.waitForTimeout(5000);
-  console.log("5seceonce finitio ");
-
-  // Clique sur Démarrer
-  const startButton = page.locator("button", { hasText: "Démarrer" }).first();
-  if (await startButton.isVisible()) {
-    console.log("🚀 Clique sur le bouton Démarrer !");
-    await startButton.click();
-  } else {
-    console.log("❌ Bouton Démarrer non trouvé !");
-  }
-
-  await page.waitForTimeout(3000);
-
-  // Boucle d'entraînement
-  const pageContent = await page.content();
-
-  console.log("Page content:", pageContent);
-
-  if (pageContent.includes("Reading")) {
-    console.log(
-      "📖 La page contient le mot 'reading'. On commence l'exercice !"
-    );
-    await readingExercise(page); // Appel de la fonction readingExercise si "reading" est trouvé
-  } else {
-    console.log(
-      "❌ La page ne contient pas le mot 'reading'. Test en cours..."
-    );
-    // Ajoute ton code de test ou autres vérifications ici
-  }
-
-  // Tu peux fermer le navigateur si besoin
+  console.log("🏁 Tous les exercices sont terminés !");
   // await browser.close();
 })();
