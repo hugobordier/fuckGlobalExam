@@ -12,6 +12,17 @@ MAIL=""
 PASSWORD=""
 ```
 
+set here with your golablexamid :
+```javascript
+// Accès au planning
+  await page.goto(
+    "https://exam.global-exam.com/user-plannings/2251799877021366", // your id here 
+    {
+      waitUntil: "domcontentloaded",
+    }
+  );
+```
+
 To run:
 
 ```bash
