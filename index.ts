@@ -154,125 +154,139 @@ const listeningExercise = async (page: Page) => {
   }
 };
 
-(async () => {
-  const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+const main = async () => {
+  try {
+    const browser = await chromium.launch({ headless: false });
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-  // Connexion
-  await page.goto("https://exam.global-exam.com/");
-  await page.waitForTimeout(1000);
-  await page.fill('input[name="email"]', MAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
-  await page.waitForTimeout(2000);
+    // Connexion
+    await page.goto("https://exam.global-exam.com/");
+    await page.waitForTimeout(1000);
+    await page.fill('input[name="email"]', MAIL);
+    await page.fill('input[name="password"]', PASSWORD);
+    await page.click('button[type="submit"]');
+    await page.waitForTimeout(2000);
 
-  // Accès au planning
-  await page.goto(
-    "https://exam.global-exam.com/user-plannings/2251799877021366",
-    {
-      waitUntil: "domcontentloaded",
-    }
-  );
-  await page.waitForTimeout(2000);
-
-  while (true) {
-    const test = page.locator("button", { hasText: "Démarrer" }).first();
-    if (await test.isVisible()) {
-      console.log("🚀 Clique sur le bouton Démarrer !");
-      await test.click();
-    } else {
-      console.log("❌ Bouton Démarrer non trouvé !");
-    }
-    // Clique sur le bon module
-    const gridContainer = page.locator(
-      "div.grid.grid-cols-12.gap-x-4.gap-y-6.pt-5.pl-4.pb-8.ml-3.border-l-2"
+    // Accès au planning
+    await page.goto(
+      "https://exam.global-exam.com/user-plannings/2251799877021366",
+      {
+        waitUntil: "domcontentloaded",
+      }
     );
-    const buttons: Locator[] = await gridContainer.locator("button").all();
+    await page.waitForTimeout(2000);
 
-    if (!buttons || buttons.length === 0) {
-      console.log("❌ Aucun bouton trouvé !");
-      break;
-    }
+    while (true) {
+      const test = page.locator("button", { hasText: "Démarrer" }).first();
+      if (await test.isVisible()) {
+        console.log("🚀 Clique sur le bouton Démarrer !");
+        await test.click();
+      } else {
+        console.log("❌ Bouton Démarrer non trouvé !");
+      }
 
-    let found = false;
-    for (let i = 0; i < buttons.length - 1; i++) {
-      const text = await buttons[i]?.innerText();
-      console.log("---------------------------------------------------");
-      console.log("Button text:", text);
+      const gridContainer = page.locator(
+        "div.grid.grid-cols-12.gap-x-4.gap-y-6.pt-5.pl-4.pb-8.ml-3.border-l-2"
+      );
+      const buttons: Locator[] = await gridContainer.locator("button").all();
 
-      if (
-        text &&
-        !text.includes("%") &&
-        !text.includes("Introduction") &&
-        text.includes("Partie")
-      ) {
-        console.log("➡️  On clique sur :", text);
-        await buttons[i]?.click();
-        found = true;
+      if (!buttons || buttons.length === 0) {
+        console.log("❌ Aucun bouton trouvé !");
         break;
       }
-    }
 
-    if (!found) {
-      console.log("✅ Tous les modules sont faits !");
-      break;
-    }
+      let found = false;
+      for (let i = 0; i < buttons.length - 1; i++) {
+        const text = await buttons[i]?.innerText();
+        console.log("---------------------------------------------------");
+        console.log("Button text:", text);
 
-    await page.waitForTimeout(5000);
-
-    // Clique sur Démarrer
-    const startButton = page.locator("button", { hasText: "Démarrer" }).first();
-    if (await startButton.isVisible()) {
-      console.log("🚀 Clique sur le bouton Démarrer !");
-      await startButton.click();
-    } else {
-      console.log("❌ Bouton Démarrer non trouvé !");
-      continue; // passe au module suivant
-    }
-
-    await page.waitForTimeout(3000);
-
-    // Détection du type d'exercice
-    const divWithClass = page.locator("div.hidden.items-center.pr-2.lg\\:flex");
-    const divContent = await divWithClass.textContent();
-
-    if (divContent && divContent.includes("reading")) {
-      console.log("📖 Exercice de reading détecté !");
-      await readingExercise(page);
-    } else if (divContent && divContent.includes("listening")) {
-      console.log("🎧 Exercice de listening détecté !");
-      await listeningExercise(page);
-    } else {
-      console.log("❓ Type d'exercice non reconnu !");
-    }
-
-    await page.waitForTimeout(3000);
-
-    const nextButton = page
-      .locator("button", { hasText: "Activité suivante" })
-      .first();
-
-    if (await nextButton.isVisible().catch(() => false)) {
-      console.log("➡️ Clique sur 'Activité suivante' !");
-      await nextButton.click();
-      await page.waitForTimeout(3000);
-    } else {
-      console.log(
-        "🔁 Bouton 'Activité suivante' non trouvé, retour manuel au planning !"
-      );
-      await page.goto(
-        "https://exam.global-exam.com/user-plannings/2251799877021366",
-        {
-          waitUntil: "domcontentloaded",
+        if (
+          text &&
+          !text.includes("%") &&
+          !text.includes("Introduction") &&
+          text.includes("Partie")
+        ) {
+          console.log("➡️  On clique sur :", text);
+          await buttons[i]?.click();
+          found = true;
+          break;
         }
+      }
+
+      if (!found) {
+        console.log("✅ Tous les modules sont faits !");
+        break;
+      }
+
+      await page.waitForTimeout(5000);
+
+      const startButton = page
+        .locator("button", { hasText: "Démarrer" })
+        .first();
+      if (await startButton.isVisible()) {
+        console.log("🚀 Clique sur le bouton Démarrer !");
+        await startButton.click();
+      } else {
+        console.log("❌ Bouton Démarrer non trouvé !");
+      }
+
+      await page.waitForTimeout(3000);
+
+      const divWithClass = page.locator(
+        "div.hidden.items-center.pr-2.lg\\:flex"
       );
-      await page.waitForTimeout(2000);
+      const divContent = await divWithClass.textContent();
+
+      if (divContent && divContent.includes("reading")) {
+        console.log("📖 Exercice de reading détecté !");
+        await readingExercise(page);
+      } else if (divContent && divContent.includes("listening")) {
+        console.log("🎧 Exercice de listening détecté !");
+        await listeningExercise(page);
+      } else {
+        console.log("❓ Type d'exercice non reconnu !");
+      }
+
+      await page.waitForTimeout(3000);
+
+      const nextButton = page
+        .locator("button", { hasText: "aaActivité suivante" })
+        .first();
+
+      if (await nextButton.isVisible().catch(() => false)) {
+        console.log("➡️ Clique sur 'Activité suivante' !");
+        await nextButton.click();
+        await page.waitForTimeout(3000);
+      } else {
+        console.log(
+          "🔁 Bouton 'Activité suivante' non trouvé, retour manuel au planning !"
+        );
+        await page.goto(
+          "https://exam.global-exam.com/user-plannings/2251799877021366",
+          {
+            waitUntil: "domcontentloaded",
+          }
+        );
+        await page.waitForTimeout(2000);
+      }
+
+      await page.waitForTimeout(3000);
     }
 
-    await page.waitForTimeout(3000);
-  }
+    console.log("🏁 Tous les exercices sont terminés !");
+    await browser.close();
 
-  console.log("🏁 Tous les exercices sont terminés !");
-  // await browser.close();
-})();
+    // 🔁 On redémarre la fonction (infinite loop style)
+    console.log("♻️ Redémarrage automatique du script !");
+    await main();
+  } catch (error) {
+    console.error("💥 Une erreur est survenue :", error);
+    console.log("🔁 Tentative de relancement du script !");
+    await main(); // 🔁 on redémarre même en cas d'erreur
+  }
+};
+
+// Let's go 🚀
+main();
