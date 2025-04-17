@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  bun-app:
+    build: .
+    container_name: bun-playwright-bot
+    environment:
+      - MAIL=hugo.bordier@epfedu.fr
+      - PASSWORD=azerty12
+    volumes:
+      - .:/app
+    network_mode: "host" # pour que Playwright puisse interagir avec ton écran si nécessaire

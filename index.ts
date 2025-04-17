@@ -156,7 +156,7 @@ const listeningExercise = async (page: Page) => {
 
 const main = async () => {
   try {
-    const browser = await chromium.launch({ headless: false });
+    const browser = await chromium.launch({ headless: true }); // false pour voir le navigateur
     const context = await browser.newContext();
     const page = await context.newPage();
 
